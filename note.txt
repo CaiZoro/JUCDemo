@@ -1,0 +1,52 @@
+阻塞队列方法对比:
+抛出异常:add(e)、remove(e)、element() 当阻塞队列满时，再往队列里add插入元素会抛出IllegalStateException:Queeu full
+		 当阻塞队列空时，再往队列里remove移除元素会抛出NoSuchElementException
+特殊值: offer()、poll()、peek()插入方法，成功true,失败false
+		移除方法，成功返回队列的元素，队里里面没有就返回null
+一直阻塞:put()、poll()当阻塞队列满时，生产者线程继续往队列里put元素，队列会一直阻塞生产线程直到put数据or响应中断退出。
+		 当阻塞队列空时，消费者线程试图从队列里take元素，队列会一直阻塞消费者线程直到队列可用。
+
+线程池执行原理：
+1.在创建了线程池后，等待提交过来的任务请求。
+2.当调用了execute()方法添加一个请求任务时，线程池会做出如下判断：
+ 2.1如果正在运行的线程数量小于corePoolSize,那么马上创建线程任务放入队列；
+ 2.2如果正在运行的线程数量大于或等于corePoolSize,那么将这个任务放入队列；
+ 2.3如果这时候队列满了且正在运行的线程数量还小于maximumPoolSize,那么还是要创建非核心线程立刻运行这个任务；
+ 2.4如果队列满了且正在运行的数量大于或等于maximumPoolSize,那么线程池会启动饱和拒绝策略来执行。
+3.当一个线程完成任务时，它会从队列中取下一个任务来执行。
+4.当一个线程无事可做超过一定时间(keepAliveTime)时，线程池会判断：
+	如果当前运行的线程数大于corePoolSize，那么这个线程会被停掉。
+	所以线程池的所有任务完成后它最终会收缩到corePoolSize的大小。
+
+线程池拒绝策略：等待队列也已经排满了，再也塞不下新任务了，同时，
+线程中的max线程也达到了，无法继续为新任务服务。
+
+这时候我们就需要拒绝策略机制合理的处理这个问题。
+
+拒绝策略：
+AbortPolicy(默认)：直接抛出RejectedExecutionException异常阻止系统正常运行。
+CallerRunsPolicy:"调用者运行"一种调节机制，该策略既不会抛弃任务，也不会抛出异常，而是将某些任务回退到调用者，从而降低新任务的流量。
+DiscardOldestPolicy:抛弃队列中等待最久的任务，然后把当前任务加入队列中尝试再次提交当前任务。
+DiscardPolicy:直接丢弃任务，不予任何处理也不抛出异常。如果允许任务丢失。这是最好的一种方案。
+
+规定:线程池不允许使用Executors去创建，而是通过ThreadPoolExecutor的方式，这样的处理方式让写的同学更加明确线程池的运行规则，规避资源耗尽的风险。
+说明：Executors返回线程池对象的弊端如下：
+1)FixedThreadPool和SingleThreadPool:
+    允许的请求队列长度为Integer.MAX_VALUE，可能会堆积大量的请求，从而导致OOM。
+2)CachedThreadPool和ScheduledThreadPool:
+	允许创建线程数量为Integer.MAX_VALUE，可能会创建大量的线程，从而导致OOM。
+	
+IO密集型：
+	由于IO密集型任务线程并不是一直在执行任务，则应配置尽可能多的线程，如CPU核数*2
+CPU密集型：
+	CPU密集的意思是该任务需要大量的运算，而没有阻塞，CPU一直全速运行。
+	CPU密集任务只有在真正的多核CPU上才可能得到加速(通过多线程)
+
+	而在单核CPU上，无论你开几个模拟的多线程任务都不可能得到加速，因为CPU总的运算能力就那些。
+	CPU密集型任务配置尽可能少的线程数量。
+	一般公式：CPU核数+1个线程的线程池
+	
+查看死锁方式:
+ jps -l 查看java运行的windows进程
+ jstack pid 查看java进程死锁问题
+ 
